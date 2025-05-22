@@ -2,6 +2,8 @@ package org.poc;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -10,29 +12,32 @@ import java.util.concurrent.locks.LockSupport;
 
 public class Main {
 
-    private static final int THREADS = 100000;
-    private static final int ROUNDS = 10;
+    public static final int THREADS = 100000;
+    public static final int ROUNDS = 10;
 
-    private static Runnable simulateWork;
-    private static String simulationName;
+    public static Runnable simulateWork;
+    public static String simulationName;
 
     public static void main(String[] args) throws InterruptedException {
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("Escolha a simulação de trabalho:");
         System.out.println("1 - Cálculos Computacionais Pesados");
-        System.out.println("2 - Operações de I/O Simuladas");
+        System.out.println("2 - Operações de alocação de memória");
         System.out.println("3 - Processamento de Strings");
         System.out.println("4 - Espera Ativa");
         System.out.println("5 - Tarefas Mistas");
+        System.out.println("6 - Simulação de IO");
         int choice = scanner.nextInt();
 
         switch (choice) {
             case 1 -> { simulateWork = Main::simulateHeavyComputation; simulationName = "Cálculos Computacionais"; }
-            case 2 -> { simulateWork = Main::simulateIOOperations; simulationName = "Operações de I/O"; }
+            case 2 -> { simulateWork = Main::simulateMemoryAllocation; simulationName = "Operações de alocação de memória"; }
             case 3 -> { simulateWork = Main::simulateStringProcessing; simulationName = "Processamento de Strings"; }
             case 4 -> { simulateWork = Main::simulateActiveWait; simulationName = "Espera Ativa"; }
             case 5 -> { simulateWork = Main::simulateMixedTasks; simulationName = "Tarefas Mistas"; }
+            case 6 -> { simulateWork = Main::simulateIOOperations; simulationName = "Tarefas Mistas"; }
+
             default -> {
                 System.out.println("Opção inválida. Usando processamento de strings como padrão.");
                 simulateWork = Main::simulateStringProcessing;
@@ -56,7 +61,7 @@ public class Main {
         printSummary(nativeResults, virtualResults);
     }
 
-    private static void simulateHeavyComputation() {
+    public static void simulateHeavyComputation() {
         int number = ThreadLocalRandom.current().nextInt(10_000, 20_000);
         long result = 1;
         for (int i = 2; i <= number; i++) {
@@ -65,7 +70,7 @@ public class Main {
         }
     }
 
-    private static void simulateIOOperations() {
+    public static void simulateMemoryAllocation() {
         int size = ThreadLocalRandom.current().nextInt(100_000, 500_000);
         byte[] data = new byte[size];
         for (int i = 0; i < size; i++) {
@@ -74,7 +79,7 @@ public class Main {
         byte[] copy = data.clone();
     }
 
-    private static void simulateStringProcessing() {
+    public static void simulateStringProcessing() {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 10_000; i++) {
             builder.append("ThreadWork").append(i);
@@ -82,14 +87,14 @@ public class Main {
         String result = builder.toString().replace("Thread", "Work");
     }
 
-    private static void simulateActiveWait() {
-        long end = System.nanoTime() + ThreadLocalRandom.current().nextInt(10, 50) * 1_000_000L;
+    public static void simulateActiveWait() {
+        long end = System.nanoTime() + ThreadLocalRandom.current().nextInt(10, 50) * 1_000_00L;
         while (System.nanoTime() < end) {
             Math.sqrt(ThreadLocalRandom.current().nextDouble());
         }
     }
 
-    private static void simulateMixedTasks() {
+    public static void simulateMixedTasks() {
         int number = ThreadLocalRandom.current().nextInt(1_000, 5_000);
         for (int i = 0; i < number; i++) {
             Math.log(i + 1);
@@ -102,7 +107,7 @@ public class Main {
         LockSupport.parkNanos(ThreadLocalRandom.current().nextInt(5, 20) * 1_000_000L);
     }
 
-    private static Result executeRound(boolean virtual) throws InterruptedException {
+    public static Result executeRound(boolean virtual) throws InterruptedException {
         List<Thread> threads = new ArrayList<>();
         Instant start = Instant.now();
 
@@ -135,33 +140,33 @@ public class Main {
         return new Result(time, heapMemoryUsed, nonHeapMemoryUsed, gcCount, gcTime);
     }
 
-    private static long getHeapMemoryUsed() {
+    public static long getHeapMemoryUsed() {
         return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
     }
 
-    private static long getNonHeapMemoryUsed() {
+    public static long getNonHeapMemoryUsed() {
         return ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed();
     }
 
-    private static long getTotalGCCount() {
+    public static long getTotalGCCount() {
         return ManagementFactory.getGarbageCollectorMXBeans()
                 .stream()
                 .mapToLong(GarbageCollectorMXBean::getCollectionCount)
                 .sum();
     }
 
-    private static long getTotalGCTime() {
+    public static long getTotalGCTime() {
         return ManagementFactory.getGarbageCollectorMXBeans()
                 .stream()
                 .mapToLong(GarbageCollectorMXBean::getCollectionTime)
                 .sum();
     }
 
-    private static String formatMB(long bytes) {
+    public static String formatMB(long bytes) {
         return String.format("%.2f MB", bytes / (1024.0 * 1024));
     }
 
-    private static void printResultsTable(String simName, int threads, List<Result> nativeResults, List<Result> virtualResults) {
+    public static void printResultsTable(String simName, int threads, List<Result> nativeResults, List<Result> virtualResults) {
         System.out.println("\n=== RESULTADOS DAS SIMULAÇÕES ===");
         System.out.printf("Simulação: %-25s | Threads: %-8d | Rodadas: %-3d%n", simName, threads, nativeResults.size());
         System.out.println("----------------------------------------------------------------------------------------------------------");
@@ -185,7 +190,7 @@ public class Main {
     }
 
 
-    private static String formatResultRow(Result r) {
+    public static String formatResultRow(Result r) {
         return String.format("%4d ms | %7s | %2d GC | %4d ms",
                 r.time,
                 formatMB(r.heapMemory + r.nonHeapMemory),
@@ -194,13 +199,13 @@ public class Main {
         );
     }
 
-    private static void printSummary(List<Result> nativeResults, List<Result> virtualResults) {
+    public static void printSummary(List<Result> nativeResults, List<Result> virtualResults) {
         System.out.println("\n=== SUMÁRIO DAS MÉDIAS ===");
         printSummaryFor("Threads Nativas", nativeResults);
         printSummaryFor("Threads Virtuais", virtualResults);
     }
 
-    private static void printSummaryFor(String label, List<Result> results) {
+    public static void printSummaryFor(String label, List<Result> results) {
         double avgTime = results.stream().mapToLong(r -> r.time).average().orElse(0);
         double avgMem = results.stream().mapToLong(r -> r.heapMemory + r.nonHeapMemory).average().orElse(0);
         double avgGC = results.stream().mapToLong(r -> r.gcCount).average().orElse(0);
@@ -210,5 +215,21 @@ public class Main {
                 label, avgTime, formatMB((long) avgMem), avgGC, avgGCTime);
     }
 
-    private record Result(long time, long heapMemory, long nonHeapMemory, long gcCount, long gcTime) {}
+    public static void simulateIOOperations() {
+        try {
+            Path tempFile = Files.createTempFile("io_sim", ".tmp");
+            byte[] data = new byte[ThreadLocalRandom.current().nextInt(10_000, 50_000)];
+            ThreadLocalRandom.current().nextBytes(data);
+
+            Files.write(tempFile, data);
+
+            byte[] readData = Files.readAllBytes(tempFile);
+
+            Files.delete(tempFile);
+        } catch (Exception e) {
+            System.err.println("Erro na simulação de I/O: " + e.getMessage());
+        }
+    }
+
+    public record Result(long time, long heapMemory, long nonHeapMemory, long gcCount, long gcTime) {}
 }
