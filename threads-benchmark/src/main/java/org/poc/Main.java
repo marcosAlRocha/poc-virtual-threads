@@ -12,15 +12,20 @@ import java.util.concurrent.locks.LockSupport;
 
 public class Main {
 
+    // Número de threads a serem criadas em cada rodada
     public static final int THREADS = 100000;
+    // Número de rodadas do benchmark
     public static final int ROUNDS = 10;
 
+    // Referência para a tarefa a ser executada pelas threads
     public static Runnable simulateWork;
+    // Nome da simulação escolhida
     public static String simulationName;
 
     public static void main(String[] args) throws InterruptedException {
         Scanner scanner = new Scanner(System.in);
 
+        // Menu para escolha do tipo de tarefa a ser simulada
         System.out.println("Escolha a simulação de trabalho:");
         System.out.println("1 - Cálculos Computacionais Pesados");
         System.out.println("2 - Operações de alocação de memória");
@@ -30,14 +35,14 @@ public class Main {
         System.out.println("6 - Simulação de IO");
         int choice = scanner.nextInt();
 
+        // Define a tarefa e o nome da simulação conforme a escolha do usuário
         switch (choice) {
             case 1 -> { simulateWork = Main::simulateHeavyComputation; simulationName = "Cálculos Computacionais"; }
             case 2 -> { simulateWork = Main::simulateMemoryAllocation; simulationName = "Operações de alocação de memória"; }
             case 3 -> { simulateWork = Main::simulateStringProcessing; simulationName = "Processamento de Strings"; }
             case 4 -> { simulateWork = Main::simulateActiveWait; simulationName = "Espera Ativa"; }
             case 5 -> { simulateWork = Main::simulateMixedTasks; simulationName = "Tarefas Mistas"; }
-            case 6 -> { simulateWork = Main::simulateIOOperations; simulationName = "Tarefas Mistas"; }
-
+            case 6 -> { simulateWork = Main::simulateIOOperations; simulationName = "Operações de IO"; }
             default -> {
                 System.out.println("Opção inválida. Usando processamento de strings como padrão.");
                 simulateWork = Main::simulateStringProcessing;
@@ -45,22 +50,27 @@ public class Main {
             }
         }
 
+        // Listas para armazenar os resultados das rodadas
         List<Result> nativeResults = new ArrayList<>();
         List<Result> virtualResults = new ArrayList<>();
 
+        // Executa rodadas com threads nativas
         for (int round = 1; round <= ROUNDS; round++) {
             System.out.println("\n🔄 Rodada " + round + " (Threads Nativas)...");
             nativeResults.add(executeRound(false));
         }
+        // Executa rodadas com threads virtuais
         for (int round = 1; round <= ROUNDS; round++) {
             System.out.println("\n🔄 Rodada " + round + " (Threads Virtuais)...");
             virtualResults.add(executeRound(true));
         }
 
+        // Exibe tabela de resultados e sumário
         printResultsTable(simulationName, THREADS, nativeResults, virtualResults);
         printSummary(nativeResults, virtualResults);
     }
 
+    // Simula tarefa de cálculo pesado (fatorial)
     public static void simulateHeavyComputation() {
         int number = ThreadLocalRandom.current().nextInt(10_000, 20_000);
         long result = 1;
@@ -70,6 +80,7 @@ public class Main {
         }
     }
 
+    // Simula alocação e cópia de memória
     public static void simulateMemoryAllocation() {
         int size = ThreadLocalRandom.current().nextInt(100_000, 500_000);
         byte[] data = new byte[size];
@@ -79,6 +90,7 @@ public class Main {
         byte[] copy = data.clone();
     }
 
+    // Simula processamento de strings
     public static void simulateStringProcessing() {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < 10_000; i++) {
@@ -87,6 +99,7 @@ public class Main {
         String result = builder.toString().replace("Thread", "Work");
     }
 
+    // Simula espera ativa (busy wait)
     public static void simulateActiveWait() {
         long end = System.nanoTime() + ThreadLocalRandom.current().nextInt(10, 50) * 1_000_00L;
         while (System.nanoTime() < end) {
@@ -94,6 +107,7 @@ public class Main {
         }
     }
 
+    // Simula tarefa mista: cálculo, alocação e espera passiva
     public static void simulateMixedTasks() {
         int number = ThreadLocalRandom.current().nextInt(1_000, 5_000);
         for (int i = 0; i < number; i++) {
@@ -107,13 +121,16 @@ public class Main {
         LockSupport.parkNanos(ThreadLocalRandom.current().nextInt(5, 20) * 1_000_000L);
     }
 
+    // Executa uma rodada do benchmark, criando e aguardando as threads
     public static Result executeRound(boolean virtual) throws InterruptedException {
         List<Thread> threads = new ArrayList<>();
         Instant start = Instant.now();
 
+        // Coleta métricas de GC antes da execução
         long gcCountBefore = getTotalGCCount();
         long gcTimeBefore = getTotalGCTime();
 
+        // Cria e inicia as threads (nativas ou virtuais)
         for (int i = 0; i < THREADS; i++) {
             Thread thread = virtual
                     ? Thread.ofVirtual().unstarted(simulateWork)
@@ -122,6 +139,7 @@ public class Main {
             thread.start();
         }
 
+        // Aguarda todas as threads terminarem
         for (Thread thread : threads) {
             thread.join();
         }
@@ -140,14 +158,17 @@ public class Main {
         return new Result(time, heapMemoryUsed, nonHeapMemoryUsed, gcCount, gcTime);
     }
 
+    // Retorna memória heap usada
     public static long getHeapMemoryUsed() {
         return ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed();
     }
 
+    // Retorna memória non-heap usada
     public static long getNonHeapMemoryUsed() {
         return ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed();
     }
 
+    // Soma o número total de coleções de GC
     public static long getTotalGCCount() {
         return ManagementFactory.getGarbageCollectorMXBeans()
                 .stream()
@@ -155,6 +176,7 @@ public class Main {
                 .sum();
     }
 
+    // Soma o tempo total gasto em GC
     public static long getTotalGCTime() {
         return ManagementFactory.getGarbageCollectorMXBeans()
                 .stream()
@@ -162,17 +184,17 @@ public class Main {
                 .sum();
     }
 
+    // Formata bytes para MB
     public static String formatMB(long bytes) {
         return String.format("%.2f MB", bytes / (1024.0 * 1024));
     }
 
+    // Imprime tabela de resultados das rodadas
     public static void printResultsTable(String simName, int threads, List<Result> nativeResults, List<Result> virtualResults) {
         System.out.println("\n=== RESULTADOS DAS SIMULAÇÕES ===");
         System.out.printf("Simulação: %-25s | Threads: %-8d | Rodadas: %-3d%n", simName, threads, nativeResults.size());
         System.out.println("----------------------------------------------------------------------------------------------------------");
-        // Cabeçalho principal com alinhamento manual para "Threads Virtuais"
         System.out.printf("%-8s | %-30s | %-40s%n", "Rodada", "Threads Nativas", "              Threads Virtuais");
-        // Subcabeçalho das colunas
         System.out.printf("%-8s | %-10s | %-12s | %-6s | %-8s | %-10s | %-12s | %-6s | %-8s%n",
                 "", "Tempo(ms)", "Memória(MB)", "GCs", "GC(ms)",
                 "Tempo(ms)", "Memória(MB)", "GCs", "GC(ms)");
@@ -189,7 +211,7 @@ public class Main {
         System.out.println("----------------------------------------------------------------------------------------------------------");
     }
 
-
+    // Formata uma linha de resultado
     public static String formatResultRow(Result r) {
         return String.format("%4d ms | %7s | %2d GC | %4d ms",
                 r.time,
@@ -199,12 +221,14 @@ public class Main {
         );
     }
 
+    // Imprime sumário das médias dos resultados
     public static void printSummary(List<Result> nativeResults, List<Result> virtualResults) {
         System.out.println("\n=== SUMÁRIO DAS MÉDIAS ===");
         printSummaryFor("Threads Nativas", nativeResults);
         printSummaryFor("Threads Virtuais", virtualResults);
     }
 
+    // Calcula e imprime médias para um tipo de thread
     public static void printSummaryFor(String label, List<Result> results) {
         double avgTime = results.stream().mapToLong(r -> r.time).average().orElse(0);
         double avgMem = results.stream().mapToLong(r -> r.heapMemory + r.nonHeapMemory).average().orElse(0);
@@ -215,6 +239,7 @@ public class Main {
                 label, avgTime, formatMB((long) avgMem), avgGC, avgGCTime);
     }
 
+    // Simula operações de I/O (leitura e escrita de arquivo temporário)
     public static void simulateIOOperations() {
         try {
             Path tempFile = Files.createTempFile("io_sim", ".tmp");
@@ -231,5 +256,6 @@ public class Main {
         }
     }
 
+    // Record para armazenar os resultados de cada rodada
     public record Result(long time, long heapMemory, long nonHeapMemory, long gcCount, long gcTime) {}
 }
